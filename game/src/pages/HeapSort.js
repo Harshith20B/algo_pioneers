@@ -1,7 +1,8 @@
+// Enhanced and corrected HeapSortGame
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/card';
 import { Button } from '../components/button';
-import { Trophy, Clock, X, Check, Lightbulb } from 'lucide-react';
+import { Trophy, Clock, X, Check, Lightbulb, StopCircle } from 'lucide-react';
 
 // Helper functions for heap operations
 const getParentIndex = (index) => Math.floor((index - 1) / 2);
@@ -30,7 +31,13 @@ const HeapSortGame = () => {
     setLastMoveValid(null);
   };
 
-  // Timer effect
+  // Stop game
+  const stopGame = () => {
+    setGameState('stopped');
+    setMessage('Game stopped. You can start a new game anytime!');
+  };
+
+  // Timer effect with edge case handling
   useEffect(() => {
     let interval;
     if (gameState === 'playing') {
@@ -45,16 +52,16 @@ const HeapSortGame = () => {
   const isValidParent = (index) => {
     const leftChild = getLeftChildIndex(index);
     const rightChild = getRightChildIndex(index);
-    
+
     if (leftChild < heap.length && heap[index] < heap[leftChild]) return false;
     if (rightChild < heap.length && heap[index] < heap[rightChild]) return false;
-    
+
     return true;
   };
 
   // Check if the entire heap is valid
   const isCompleteHeap = () => {
-    for (let i = 0; i < heap.length; i++) {
+    for (let i = 0; i < Math.floor(heap.length / 2); i++) {
       if (!isValidParent(i)) return false;
     }
     return true;
@@ -66,38 +73,25 @@ const HeapSortGame = () => {
 
     const newHeap = [...heap];
     [newHeap[sourceIndex], newHeap[targetIndex]] = [newHeap[targetIndex], newHeap[sourceIndex]];
-    
-    // Check if the swap improves the heap structure
-    const parentIndices = new Set([
-      getParentIndex(sourceIndex),
-      getParentIndex(targetIndex),
-      sourceIndex,
-      targetIndex
-    ].filter(idx => idx >= 0));
 
-    let isValid = true;
-    for (const idx of parentIndices) {
-      if (!isValidParent(idx)) {
-        isValid = false;
-        break;
-      }
-    }
+    setHeap(newHeap);
 
-    if (isValid) {
-      const pointsEarned = isCompleteHeap() ? 10 : 3;
-      setScore(prev => prev + pointsEarned);
-      setMessage(`Great move! +${pointsEarned} points`);
-      setLastMoveValid(true);
-      setHeap(newHeap);
-      
-      if (isCompleteHeap()) {
-        setGameState('complete');
-        setMessage('Congratulations! You\'ve built a valid max heap!');
-      }
+    if (isCompleteHeap()) {
+      setGameState('complete');
+      setMessage('Congratulations! You\'ve built a valid max heap!');
+      setScore((prev) => prev + 10);
     } else {
-      setMistakes(prev => prev + 1);
-      setMessage('Invalid move! Remember: parents must be larger than children');
-      setLastMoveValid(false);
+      const validSwap = isValidParent(sourceIndex) && isValidParent(targetIndex);
+
+      if (validSwap) {
+        setScore((prev) => prev + 3);
+        setMessage('Good move! +3 points');
+        setLastMoveValid(true);
+      } else {
+        setMistakes((prev) => prev + 1);
+        setMessage('Invalid move! Remember: parents must be larger than children');
+        setLastMoveValid(false);
+      }
     }
   };
 
@@ -106,26 +100,26 @@ const HeapSortGame = () => {
     const level = Math.floor(Math.log2(index + 1));
     const nodesInLevel = Math.pow(2, level);
     const nodePosition = index - (Math.pow(2, level) - 1);
-    
+
     const horizontalSpacing = 160;
     const verticalSpacing = 70;
     const levelWidth = nodesInLevel * horizontalSpacing;
     const x = 400 + (nodePosition * horizontalSpacing) - (levelWidth / 2) + (horizontalSpacing / 2);
     const y = 50 + (level * verticalSpacing);
-    
+
     return { x, y };
   };
 
   // Get node color based on state
   const getNodeColor = (index) => {
-    if (selectedNodes.includes(index)) return '#60a5fa';
-    if (lastMoveValid === true && selectedNodes.length === 0) return '#86efac';
-    if (lastMoveValid === false && selectedNodes.length === 0) return '#fca5a5';
-    return 'white';
+    if (selectedNodes.includes(index)) return '#ff9f43';
+    if (lastMoveValid === true && selectedNodes.length === 0) return '#28c76f';
+    if (lastMoveValid === false && selectedNodes.length === 0) return '#ea5455';
+    return '#f8f9fa';
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-4xl">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>HeapSort Game</span>
@@ -153,7 +147,7 @@ const HeapSortGame = () => {
         }`}>
           {message}
         </div>
-        
+
         <div className="flex justify-center gap-4 mb-6">
           <Button 
             onClick={initializeGame}
@@ -168,9 +162,16 @@ const HeapSortGame = () => {
             <Lightbulb className="w-4 h-4 mr-2" />
             Hint
           </Button>
+          <Button 
+            variant="outline"
+            onClick={stopGame}
+          >
+            <StopCircle className="w-4 h-4 mr-2" />
+            Stop Game
+          </Button>
         </div>
 
-        <div className="relative w-full h-96 overflow-hidden border rounded-lg bg-slate-50">
+        <div className="relative w-full h-96 overflow-hidden border rounded-lg bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200">
           <svg 
             viewBox="0 0 800 300" 
             className="w-full h-full"
@@ -180,7 +181,7 @@ const HeapSortGame = () => {
               const leftChild = getLeftChildIndex(index);
               const rightChild = getRightChildIndex(index);
               const parentPos = calculateNodePosition(index);
-              
+
               return (
                 <g key={`edges-${index}`}>
                   {leftChild < heap.length && (
@@ -206,11 +207,11 @@ const HeapSortGame = () => {
                 </g>
               );
             })}
-            
+
             {heap.map((value, index) => {
               const pos = calculateNodePosition(index);
               const isSelected = selectedNodes.includes(index);
-              
+
               return (
                 <g
                   key={`node-${index}`}
