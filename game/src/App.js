@@ -1,16 +1,22 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/navbar';
+import Home from './pages/Home';
 import HeapSortGame from './pages/HeapSort';
+import NQueens from './pages/NQueens'; // We'll create this next
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="container mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-          Learn Heap Sort
-        </h1>
-        <HeapSortGame />
+    <Router>
+      <div className="min-h-screen bg-algo-black">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/heapsort" element={<HeapSortGame />} />
+          <Route path="/nqueens" element={<NQueens />} />
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
 

@@ -3,7 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/card';
 import { Button } from '../components/button';
 import { Trophy, Clock, X, Check, Lightbulb } from 'lucide-react';
 
-// Helper functions for heap operations
 const getParentIndex = (index) => Math.floor((index - 1) / 2);
 const getLeftChildIndex = (index) => 2 * index + 1;
 const getRightChildIndex = (index) => 2 * index + 2;
@@ -18,7 +17,6 @@ const HeapSortGame = () => {
   const [message, setMessage] = useState('Welcome! Click "New Game" to start.');
   const [lastMoveValid, setLastMoveValid] = useState(null);
 
-  // Initialize game with random numbers
   const initializeGame = () => {
     const numbers = Array.from({ length: 7 }, () => Math.floor(Math.random() * 100));
     setHeap(numbers);
@@ -26,235 +24,239 @@ const HeapSortGame = () => {
     setScore(0);
     setMistakes(0);
     setTimer(0);
-    setMessage('Click two nodes to swap them. Build a max heap!');
+    setMessage('Select two nodes to swap them and build a max heap!');
     setLastMoveValid(null);
+    setSelectedNodes([]);
   };
 
-  // Timer effect
   useEffect(() => {
     let interval;
     if (gameState === 'playing') {
-      interval = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
+      interval = setInterval(() => setTimer(prev => prev + 1), 1000);
     }
     return () => clearInterval(interval);
   }, [gameState]);
 
-  // Check if a specific node and its children form a valid max heap
-  const isValidParent = (index) => {
+  const isValidMaxHeapProperty = (heapArray, index) => {
     const leftChild = getLeftChildIndex(index);
     const rightChild = getRightChildIndex(index);
     
-    if (leftChild < heap.length && heap[index] < heap[leftChild]) return false;
-    if (rightChild < heap.length && heap[index] < heap[rightChild]) return false;
+    const isValidLeft = leftChild >= heapArray.length || heapArray[index] >= heapArray[leftChild];
+    const isValidRight = rightChild >= heapArray.length || heapArray[index] >= heapArray[rightChild];
     
-    return true;
+    return isValidLeft && isValidRight;
   };
 
-  // Check if the entire heap is valid
-  const isCompleteHeap = () => {
-    for (let i = 0; i < heap.length; i++) {
-      if (!isValidParent(i)) return false;
-    }
-    return true;
-  };
-
-  // Handle node swap with improved scoring
-  const handleNodeSwap = (sourceIndex, targetIndex) => {
-    if (sourceIndex === targetIndex) return;
-
-    const newHeap = [...heap];
-    [newHeap[sourceIndex], newHeap[targetIndex]] = [newHeap[targetIndex], newHeap[sourceIndex]];
+  const isValidSwap = (sourceIndex, targetIndex, newHeap) => {
+    // Check if the swap maintains max heap property for affected nodes
+    const parentSource = getParentIndex(sourceIndex);
+    const parentTarget = getParentIndex(targetIndex);
     
-    // Check if the swap improves the heap structure
-    const parentIndices = new Set([
-      getParentIndex(sourceIndex),
-      getParentIndex(targetIndex),
+    const nodesToCheck = new Set([
       sourceIndex,
-      targetIndex
+      targetIndex,
+      parentSource,
+      parentTarget
     ].filter(idx => idx >= 0));
 
-    let isValid = true;
-    for (const idx of parentIndices) {
-      if (!isValidParent(idx)) {
-        isValid = false;
-        break;
+    for (const idx of nodesToCheck) {
+      if (!isValidMaxHeapProperty(newHeap, idx)) {
+        return false;
       }
     }
+    return true;
+  };
 
-    if (isValid) {
-      const pointsEarned = isCompleteHeap() ? 10 : 3;
-      setScore(prev => prev + pointsEarned);
-      setMessage(`Great move! +${pointsEarned} points`);
-      setLastMoveValid(true);
-      setHeap(newHeap);
-      
-      if (isCompleteHeap()) {
-        setGameState('complete');
-        setMessage('Congratulations! You\'ve built a valid max heap!');
+  const isCompleteMaxHeap = (heapArray) => {
+    for (let i = 0; i < heapArray.length; i++) {
+      if (!isValidMaxHeapProperty(heapArray, i)) {
+        return false;
       }
-    } else {
-      setMistakes(prev => prev + 1);
-      setMessage('Invalid move! Remember: parents must be larger than children');
-      setLastMoveValid(false);
+    }
+    return true;
+  };
+
+  const handleNodeClick = (index) => {
+    if (gameState !== 'playing') return;
+
+    if (selectedNodes.length === 0) {
+      setSelectedNodes([index]);
+      setLastMoveValid(null);
+    } else if (selectedNodes.length === 1) {
+      const sourceIndex = selectedNodes[0];
+      if (sourceIndex === index) {
+        setSelectedNodes([]);
+        return;
+      }
+
+      const newHeap = [...heap];
+      [newHeap[sourceIndex], newHeap[index]] = [newHeap[index], newHeap[sourceIndex]];
+
+      const isValid = isValidSwap(sourceIndex, index, newHeap);
+      
+      if (isValid) {
+        setHeap(newHeap);
+        const isComplete = isCompleteMaxHeap(newHeap);
+        const pointsEarned = isComplete ? 10 : 2;
+        setScore(prev => prev + pointsEarned);
+        setMessage(isComplete ? 'Perfect! You\'ve built a valid max heap!' : 'Valid move! Keep going!');
+        setLastMoveValid(true);
+        
+        if (isComplete) {
+          setGameState('complete');
+        }
+      } else {
+        setMistakes(prev => prev + 1);
+        setMessage('Invalid swap! Parent nodes must be larger than their children.');
+        setLastMoveValid(false);
+      }
+      setSelectedNodes([]);
     }
   };
 
-  // Calculate node positions with improved spacing
   const calculateNodePosition = (index) => {
     const level = Math.floor(Math.log2(index + 1));
     const nodesInLevel = Math.pow(2, level);
     const nodePosition = index - (Math.pow(2, level) - 1);
     
-    const horizontalSpacing = 160;
-    const verticalSpacing = 70;
+    const horizontalSpacing = 120;
+    const verticalSpacing = 80;
     const levelWidth = nodesInLevel * horizontalSpacing;
     const x = 400 + (nodePosition * horizontalSpacing) - (levelWidth / 2) + (horizontalSpacing / 2);
-    const y = 50 + (level * verticalSpacing);
+    const y = 60 + (level * verticalSpacing);
     
     return { x, y };
   };
 
-  // Get node color based on state
-  const getNodeColor = (index) => {
-    if (selectedNodes.includes(index)) return '#60a5fa';
-    if (lastMoveValid === true && selectedNodes.length === 0) return '#86efac';
-    if (lastMoveValid === false && selectedNodes.length === 0) return '#fca5a5';
-    return 'white';
-  };
-
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <span>HeapSort Game</span>
-          <div className="flex gap-4 text-sm">
-            <span className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-yellow-500" />
-              Score: {score}
-            </span>
-            <span className="flex items-center gap-2">
-              <X className="w-4 h-4 text-red-500" />
-              Mistakes: {mistakes}
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-500" />
-              Time: {timer}s
-            </span>
+    <div className="p-4 bg-slate-950">
+      <Card className="w-full max-w-4xl mx-auto bg-slate-900 border-slate-800">
+        <CardHeader className="border-b border-slate-800">
+          <CardTitle className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-2xl font-bold text-blue-400">HeapSort Game</span>
+            <div className="flex flex-wrap justify-center gap-4 text-base">
+              <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                <span className="text-slate-200">{score}</span>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded">
+                <X className="w-5 h-5 text-red-400" />
+                <span className="text-slate-200">{mistakes}</span>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded">
+                <Clock className="w-5 h-5 text-blue-400" />
+                <span className="text-slate-200">{timer}s</span>
+              </div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className={`text-center mb-6 p-3 rounded text-lg ${
+            lastMoveValid === true ? 'bg-blue-500/20 text-blue-400' :
+            lastMoveValid === false ? 'bg-red-500/20 text-red-400' :
+            'bg-slate-800 text-slate-200'
+          }`}>
+            {message}
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className={`text-center mb-4 p-2 rounded ${
-          lastMoveValid === true ? 'bg-green-100 text-green-800' :
-          lastMoveValid === false ? 'bg-red-100 text-red-800' :
-          'text-blue-600'
-        }`}>
-          {message}
-        </div>
-        
-        <div className="flex justify-center gap-4 mb-6">
-          <Button 
-            onClick={initializeGame}
-            variant={gameState === 'init' ? 'default' : 'outline'}
-          >
-            New Game
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setMessage('Parent nodes must be larger than their children!')}
-          >
-            <Lightbulb className="w-4 h-4 mr-2" />
-            Hint
-          </Button>
-        </div>
+          
+          <div className="flex justify-center gap-4 mb-8">
+            <Button 
+              onClick={initializeGame}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6"
+            >
+              New Game
+            </Button>
+            <Button
+              variant="outline"
+              className="border-slate-700 text-slate-200 hover:bg-slate-800"
+              onClick={() => setMessage('Build a max heap: parent nodes must be larger than their children!')}
+            >
+              <Lightbulb className="w-5 h-5 mr-2" />
+              Hint
+            </Button>
+          </div>
 
-        <div className="relative w-full h-96 overflow-hidden border rounded-lg bg-slate-50">
-          <svg 
-            viewBox="0 0 800 300" 
-            className="w-full h-full"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {heap.map((_, index) => {
-              const leftChild = getLeftChildIndex(index);
-              const rightChild = getRightChildIndex(index);
-              const parentPos = calculateNodePosition(index);
+          <div className="relative w-full h-96 border border-slate-800 rounded-lg bg-slate-950">
+            <svg 
+              viewBox="0 0 800 300" 
+              className="w-full h-full"
+            >
+              {heap.map((_, index) => {
+                const leftChild = getLeftChildIndex(index);
+                const rightChild = getRightChildIndex(index);
+                const parentPos = calculateNodePosition(index);
+                
+                return (
+                  <g key={`edges-${index}`}>
+                    {leftChild < heap.length && (
+                      <line
+                        x1={parentPos.x}
+                        y1={parentPos.y}
+                        x2={calculateNodePosition(leftChild).x}
+                        y2={calculateNodePosition(leftChild).y}
+                        stroke="#1e293b"
+                        strokeWidth="2"
+                      />
+                    )}
+                    {rightChild < heap.length && (
+                      <line
+                        x1={parentPos.x}
+                        y1={parentPos.y}
+                        x2={calculateNodePosition(rightChild).x}
+                        y2={calculateNodePosition(rightChild).y}
+                        stroke="#1e293b"
+                        strokeWidth="2"
+                      />
+                    )}
+                  </g>
+                );
+              })}
               
-              return (
-                <g key={`edges-${index}`}>
-                  {leftChild < heap.length && (
-                    <line
-                      x1={parentPos.x}
-                      y1={parentPos.y}
-                      x2={calculateNodePosition(leftChild).x}
-                      y2={calculateNodePosition(leftChild).y}
-                      stroke="#94a3b8"
-                      strokeWidth="2"
-                    />
-                  )}
-                  {rightChild < heap.length && (
-                    <line
-                      x1={parentPos.x}
-                      y1={parentPos.y}
-                      x2={calculateNodePosition(rightChild).x}
-                      y2={calculateNodePosition(rightChild).y}
-                      stroke="#94a3b8"
-                      strokeWidth="2"
-                    />
-                  )}
-                </g>
-              );
-            })}
-            
-            {heap.map((value, index) => {
-              const pos = calculateNodePosition(index);
-              const isSelected = selectedNodes.includes(index);
-              
-              return (
-                <g
-                  key={`node-${index}`}
-                  transform={`translate(${pos.x}, ${pos.y})`}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    if (gameState !== 'playing') return;
-                    if (selectedNodes.length === 0) {
-                      setSelectedNodes([index]);
-                      setLastMoveValid(null);
-                    } else if (selectedNodes.length === 1) {
-                      handleNodeSwap(selectedNodes[0], index);
-                      setSelectedNodes([]);
-                    }
-                  }}
-                >
-                  <circle
-                    r="25"
-                    fill={getNodeColor(index)}
-                    stroke={isSelected ? '#1e40af' : '#94a3b8'}
-                    strokeWidth="2"
-                  />
-                  <text
-                    textAnchor="middle"
-                    dy="0.3em"
-                    fill={isSelected ? 'white' : 'black'}
-                    className="text-sm font-medium select-none"
+              {heap.map((value, index) => {
+                const pos = calculateNodePosition(index);
+                const isSelected = selectedNodes.includes(index);
+                
+                return (
+                  <g
+                    key={`node-${index}`}
+                    transform={`translate(${pos.x}, ${pos.y})`}
+                    onClick={() => handleNodeClick(index)}
+                    className="cursor-pointer"
                   >
-                    {value}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-
-        {gameState === 'complete' && (
-          <div className="mt-4 p-4 bg-green-100 text-green-800 rounded-lg text-center">
-            <Check className="w-6 h-6 inline-block mr-2" />
-            Congratulations! Final Score: {score} | Time: {timer}s | Mistakes: {mistakes}
+                    <circle
+                      r="24"
+                      className={`
+                        transition-colors duration-200
+                        ${isSelected ? 'fill-blue-500 stroke-blue-400' : 
+                          lastMoveValid === true ? 'fill-slate-800 stroke-blue-500/50' :
+                          lastMoveValid === false ? 'fill-slate-800 stroke-red-500/50' :
+                          'fill-slate-800 stroke-slate-700'}
+                      `}
+                      strokeWidth="2"
+                    />
+                    <text
+                      textAnchor="middle"
+                      dy="0.3em"
+                      className={`text-base font-medium select-none
+                        ${isSelected ? 'fill-white' : 'fill-slate-200'}`}
+                    >
+                      {value}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {gameState === 'complete' && (
+            <div className="mt-6 p-4 bg-green-500/20 text-green-400 rounded text-center text-lg">
+              <Check className="w-6 h-6 inline-block mr-2" />
+              Congratulations! Final Score: {score} | Time: {timer}s | Mistakes: {mistakes}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
