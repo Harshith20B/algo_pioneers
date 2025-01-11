@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './components/card';
-import { Button } from './components/button';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/card';
+import { Button } from '../components/button';
 import { Trophy, Clock, X, Check, Lightbulb } from 'lucide-react';
 
 // Helper functions for heap operations
@@ -84,7 +84,6 @@ const HeapSortGame = () => {
     }
 
     if (isValid) {
-      // Award more points for swaps that fix parent-child relationships
       const pointsEarned = isCompleteHeap() ? 10 : 3;
       setScore(prev => prev + pointsEarned);
       setMessage(`Great move! +${pointsEarned} points`);
@@ -126,7 +125,7 @@ const HeapSortGame = () => {
   };
 
   return (
-    <Card className="w-full max-w-4xl">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>HeapSort Game</span>
