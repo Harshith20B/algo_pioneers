@@ -1,11 +1,41 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../components/auth';
 
-const Navbar = () => {
+const NavBar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  // Handle clicks outside of the user menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const isActive = (path) => {
     return location.pathname === path ? 'text-algo-blue' : 'text-algo-light hover:text-algo-blue';
+  };
+
+  const handleLogout = () => {
+    try {
+      logout();
+      setShowUserMenu(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // You could add a toast notification here to show the error
+    }
   };
 
   return (
@@ -47,6 +77,73 @@ const Navbar = () => {
             >
               N-Queens
             </Link>
+            {!user ? (
+              <>
+                <Link 
+                  to="/login" 
+                  className="text-algo-light hover:text-algo-blue transition-colors duration-200 text-sm font-medium"
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/signup" 
+                  className="text-algo-light hover:text-algo-blue transition-colors duration-200 text-sm font-medium"
+                >
+                  Sign Up
+                </Link>
+              </>
+            ) : (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-1 text-algo-light hover:text-algo-blue transition-colors duration-200 text-sm font-medium p-2 rounded-md hover:bg-algo-dark-lighter"
+                  aria-expanded={showUserMenu}
+                  aria-haspopup="true"
+                >
+                  <span>{user.username}</span>
+                  <svg
+                    className={`h-4 w-4 transform transition-transform duration-200 ${
+                      showUserMenu ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                
+                {showUserMenu && (
+                  <div 
+                    className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-algo-dark ring-1 ring-black ring-opacity-5 z-50"
+                    role="menu"
+                    aria-orientation="vertical"
+                    aria-labelledby="user-menu"
+                  >
+                    <div className="py-1" role="none">
+                      <Link
+                        to="/profile"
+                        className="block px-4 py-2 text-sm text-algo-light hover:bg-algo-dark-lighter hover:text-algo-blue"
+                        role="menuitem"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-algo-light hover:bg-algo-dark-lighter hover:text-algo-blue"
+                        role="menuitem"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -54,4 +151,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default NavBar;

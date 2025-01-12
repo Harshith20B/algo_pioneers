@@ -12,6 +12,7 @@ module.exports = {
           'black': '#1d1d1d',
           'gray': '#3c4748',
           'blue': '#208cdc',
+          'algo-dark-lighter': '#2d3748',
         }
       },
       animation: {
